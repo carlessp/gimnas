@@ -369,13 +369,11 @@ const app = {
 
     showCategoryProgress(category) {
         const exercises = this.getExercisesByCategory(category);
-        const dates = [...new Set(exercises.flatMap(ex => ex.records.map(r => r.date)))].sort();
-
         const datasets = exercises.map(exercise => {
-            const data = dates.map(date => {
-                const record = exercise.records.find(r => r.date === date);
-                return record ? this.calculateVolume(record) : 0;
-            });
+            const data = exercise.records.map(record => ({
+                x: record.date,
+                y: this.calculateVolume(record)
+            }));
 
             return {
                 label: exercise.name,
@@ -385,40 +383,72 @@ const app = {
             };
         });
 
-        this.createChart(dates, datasets, `Progrés de la categoria: ${category}`);
+        this.createChart(datasets, `Progrés de la categoria: ${category}`);
     },
 
     showExerciseProgress(exerciseName) {
         const exercise = this.getAllExercises().find(ex => ex.name === exerciseName);
         if (exercise) {
-            const dates = exercise.records.map(r => r.date).sort();
-            const volumes = exercise.records.map(r => this.calculateVolume(r));
+            const data = exercise.records.map(record => ({
+                x: record.date,
+                y: this.calculateVolume(record)
+            }));
 
             const dataset = {
                 label: exercise.name,
-                data: volumes,
+                data: data,
                 borderColor: this.getRandomColor(),
                 fill: false
             };
 
-            this.createChart(dates, [dataset], `Progrés de l'exercici: ${exerciseName}`);
+            this.createChart([dataset], `Progrés de l'exercici: ${exerciseName}`);
         }
     },
 
-    createChart(labels, datasets, title) {
+    createChart(datasets, title) {
         const ctx = document.getElementById('progress-chart').getContext('2d');
         if (window.progressChart instanceof Chart) {
             window.progressChart.destroy();
         }
         window.progressChart = new Chart(ctx, {
             type: 'line',
-            data: { labels, datasets },
+            data: { datasets },
             options: {
                 responsive: true,
-                title: { display: true, text: title },
+                plugins: {
+                    title: { 
+                        display: true, 
+                        text: title 
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                return new Date(context[0].parsed.x).toLocaleDateString('ca-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+                            }
+                        }
+                    }
+                },
                 scales: {
-                    x: { display: true, title: { display: true, text: 'Data' } },
-                    y: { display: true, title: { display: true, text: 'Volum (kg)' } }
+                    x: { 
+                        type: 'time',
+                        time: {
+                            parser: 'yyyy-MM-dd',
+                            unit: 'day',
+                            displayFormats: {
+                                day: 'dd/MM/yyyy'
+                            }
+                        },
+                        title: { 
+                            display: true, 
+                            text: 'Data' 
+                        }
+                    },
+                    y: { 
+                        title: { 
+                            display: true, 
+                            text: 'Volum (kg)' 
+                        }
+                    }
                 }
             }
         });
